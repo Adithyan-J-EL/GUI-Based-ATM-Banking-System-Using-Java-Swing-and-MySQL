@@ -1,0 +1,192 @@
+import javax.swing.*;
+import java.awt.*;
+import java.util.HashMap;
+import java.util.Map;
+
+class Account {
+    private String username;
+    private String password;
+    private double balance;
+
+    public Account(String username, String password, double balance) {
+        this.username = username;
+        this.password = password;
+        this.balance = balance;
+    }
+
+    public boolean validateLogin(String enteredUsername, String enteredPassword) {
+        return this.username.equals(enteredUsername) && this.password.equals(enteredPassword);
+    }
+
+    public double getBalance() {
+        return balance;
+    }
+
+    public boolean withdraw(double amount) {
+        if (amount > balance) {
+            return false;
+        }
+        balance -= amount;
+        return true;
+    }
+
+    public void deposit(double amount) {
+        balance += amount;
+    }
+
+    public void transfer(Account recipient, double amount) {
+        if (withdraw(amount)) {
+            recipient.deposit(amount);
+        }
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void changePassword(String newPassword) {
+        this.password = newPassword;
+    }
+}
+
+public class ATMApp {
+    private static Map<String, Account> accounts = new HashMap<>();
+    private static Account currentAccount;
+    private static JFrame frame;
+    private static CardLayout cardLayout;
+    private static JPanel cards;
+    private static JTextField amountField;
+    private static JLabel balanceLabel;
+    private static JComboBox<String> transferToDropdown;
+
+    static {
+        accounts.put("user1", new Account("user1", "pass1", 1000.00));
+        accounts.put("user2", new Account("user2", "pass2", 1200.00));
+        accounts.put("user3", new Account("user3", "pass3", 800.00));
+        accounts.put("user4", new Account("user4", "pass4", 1500.00));
+        accounts.put("user5", new Account("user5", "pass5", 2000.00));
+        accounts.put("user6", new Account("user6", "pass6", 500.00));
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(ATMApp::initializeUI);
+    }
+
+    private static void initializeUI() {
+        frame = new JFrame("ATM Machine");
+        frame.setSize(400, 350);
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setLocationRelativeTo(null);
+
+        cardLayout = new CardLayout();
+        cards = new JPanel(cardLayout);
+
+        cards.add(createLoginPanel(), "Login");
+        cards.add(createAtmPanel(), "ATM");
+
+        frame.add(cards);
+        cardLayout.show(cards, "Login");
+        frame.setVisible(true);
+    }
+
+    private static JPanel createLoginPanel() {
+        JPanel panel = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(5, 5, 5, 5);
+
+        JLabel titleLabel = new JLabel("ATM LOGIN");
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 24));
+        JLabel usernameLabel = new JLabel("Username:");
+        JTextField usernameField = new JTextField(10);
+        JLabel passwordLabel = new JLabel("Password:");
+        JPasswordField passwordField = new JPasswordField(10);
+        JButton loginButton = new JButton("Login");
+
+        loginButton.addActionListener(e -> {
+            String enteredUsername = usernameField.getText();
+            String enteredPassword = new String(passwordField.getPassword());
+
+            if (accounts.containsKey(enteredUsername) && accounts.get(enteredUsername).validateLogin(enteredUsername, enteredPassword)) {
+                currentAccount = accounts.get(enteredUsername);
+                updateBalanceLabel();
+                cardLayout.show(cards, "ATM");
+            } else {
+                JOptionPane.showMessageDialog(frame, "Invalid login credentials.", "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+
+        gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2; panel.add(titleLabel, gbc);
+        gbc.gridy = 1; gbc.gridwidth = 1; panel.add(usernameLabel, gbc);
+        gbc.gridx = 1; panel.add(usernameField, gbc);
+        gbc.gridx = 0; gbc.gridy = 2; panel.add(passwordLabel, gbc);
+        gbc.gridx = 1; panel.add(passwordField, gbc);
+        gbc.gridx = 0; gbc.gridy = 3; gbc.gridwidth = 2; panel.add(loginButton, gbc);
+
+        return panel;
+    }
+
+    private static JPanel createAtmPanel() {
+        JPanel panel = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(5, 5, 5, 5);
+
+        balanceLabel = new JLabel();
+        balanceLabel.setFont(new Font("Arial", Font.BOLD, 16));
+        JButton depositButton = new JButton("Deposit");
+        JButton withdrawButton = new JButton("Withdraw");
+        JButton transferButton = new JButton("Transfer");
+        JButton logoutButton = new JButton("Logout");
+
+        amountField = new JTextField(10);
+        transferToDropdown = new JComboBox<>(accounts.keySet().toArray(new String[0]));
+
+        depositButton.addActionListener(e -> handleTransaction(true));
+        withdrawButton.addActionListener(e -> handleTransaction(false));
+        transferButton.addActionListener(e -> handleTransfer());
+        logoutButton.addActionListener(e -> cardLayout.show(cards, "Login"));
+
+        gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2; panel.add(balanceLabel, gbc);
+        gbc.gridy = 1; gbc.gridwidth = 1; panel.add(new JLabel("Amount:"), gbc);
+        gbc.gridx = 1; panel.add(amountField, gbc);
+        gbc.gridx = 0; gbc.gridy = 2; panel.add(depositButton, gbc);
+        gbc.gridx = 1; panel.add(withdrawButton, gbc);
+        gbc.gridx = 0; gbc.gridy = 3; panel.add(new JLabel("Transfer to:"), gbc);
+        gbc.gridx = 1; panel.add(transferToDropdown, gbc);
+        gbc.gridx = 0; gbc.gridy = 4; panel.add(transferButton, gbc);
+        gbc.gridy = 5; gbc.gridwidth = 2; panel.add(logoutButton, gbc);
+
+        return panel;
+    }
+
+    private static void updateBalanceLabel() {
+        balanceLabel.setText("Balance:Rs " + currentAccount.getBalance());
+    }
+
+    private static void handleTransaction(boolean isDeposit) {
+        try {
+            double amount = Double.parseDouble(amountField.getText());
+            if (amount <= 0) throw new NumberFormatException();
+
+            if (isDeposit) {
+                currentAccount.deposit(amount);
+            } else {
+                if (!currentAccount.withdraw(amount)) {
+                    JOptionPane.showMessageDialog(frame, "Insufficient balance.", "Error", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+            }
+            updateBalanceLabel();
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(frame, "Invalid amount.", "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private static void handleTransfer() {
+        String recipientUsername = (String) transferToDropdown.getSelectedItem();
+        if (recipientUsername != null && !recipientUsername.equals(currentAccount)) {
+            double amount = Double.parseDouble(amountField.getText());
+            currentAccount.transfer(accounts.get(recipientUsername), amount);
+            updateBalanceLabel();
+        }
+    }
+}
